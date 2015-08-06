@@ -217,8 +217,8 @@ var SampleApp = function() {
 
     self.handleWS = function(message, ws) {
 
-        setTimeout(function() {
-            ws.send({message: 'Random message', uid: Math.random()});
+        setInterval(function() {
+            ws.send(JSON.stringify({message: 'Random message', uid: Math.random()}));
         }, 3000);
 
     };
