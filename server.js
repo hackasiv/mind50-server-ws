@@ -232,6 +232,7 @@ var SampleApp = function() {
         self.app.ws('/ws', function(ws, req) {
           ws.on('message', function(msg) {
             console.log(msg);
+            ws.send('FROM SERVER ==> ' + msg);
           });
           console.log('socket', req.testing);
         });
