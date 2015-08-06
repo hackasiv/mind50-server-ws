@@ -37,6 +37,8 @@ var messageSchema = mongoose.Schema({
 userSchema.index({geo: '2dsphere'});
 
 userSchema.methods.findNear = function (distance, cb) {
+    console.log(distance, 'distance');
+    console.log(this.geo);
     return this.model('User').geoNear(this.geo, {maxDistance: distance, spherical: true}, cb);
 }
 
