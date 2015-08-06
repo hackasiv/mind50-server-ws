@@ -18,7 +18,13 @@ if (!process.env.OPENSHIFT_MONGODB_DB_PORT) {
     process.env.OPENSHIFT_MONGODB_DB_PORT =  27017;
 }
 
-mongoose.connect("mongodb://" + mongodb.user + ":" + mongodb.password + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname);
+var connection_string = "mongodb://" + mongodb.user + ":" + mongodb.password + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname;
+
+if (process.env.OPENSHIFT_MONGODB_DB_HOST == '127.0.0.1') {
+    connection_string = "mongodb://" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname
+}
+
+mongoose.connect(connection_string);
 
 var GeoType = {
     type      : String,
@@ -64,7 +70,6 @@ userSchema.methods.findNear = function (distance, cb) {
         "maxDistance": distance / 6371000,
         "query": {}
       }, { dbName: mongodb.dbname }, function (err, doc) {
-        console.error('found', doc);
         cb(err, doc);
       }
     );
@@ -212,9 +217,9 @@ var SampleApp = function() {
             .select({ _id: 1 })
             .exec(function(errors, users) {
                 if (users && users.length) {
-                    var last_id = users[0]._id;
+                    last_id = users[0]._id;
                 }
-                var new_id = ++last_id;
+                var new_id = 1 + last_id;
                 var user = new User({
                     _id: new_id,
                     wssid: data.wssid,
@@ -273,9 +278,9 @@ var SampleApp = function() {
                 distance = 50;
             }
 
-            user.findNear(distance, function(errors, users) {
+            user.findNear(distance, function(errors, results) {
                 console.log(errors, 'errors');
-                cb(errors, users);
+                cb(errors, results.results);
             });
         });
     };
@@ -286,7 +291,7 @@ var SampleApp = function() {
         });
     }
 
-    self.handleWS = function(message, ws) {
+    self.handleWS = function(message, ws, wss) {
 
         var getUser = function(cb) {
             User.findOne({wssid: ws.upgradeReq.headers['sec-websocket-key']}, function(errors, user){
@@ -312,9 +317,10 @@ var SampleApp = function() {
             } else if (message.action == 'post') { // Request to post message(Mind)
                 getUser(function(errors, user) {
                     self.createMessage(user._id, {message: message.message}, function(errors, message){
-                        self.getNearestUsers(user._id, function(errors, users) {
+                        self.getNearestUsers(user._id, 100, function(errors, users) {
                             for(var i in users) {
-                                var user = users[i];
+                                var user = users[i].obj;
+                                console.log(user, 'user');
                                 wss.clients.forEach(function(client) {
                                     if (client.upgradeReq.headers['sec-websocket-key'] == user.wssid) {
                                         client.send(JSON.stringify(message));
