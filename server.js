@@ -20,19 +20,23 @@ if (!process.env.OPENSHIFT_MONGODB_DB_PORT) {
 
 mongoose.connect("mongodb://" + mongodb.user + ":" + mongodb.password + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname);
 
+var GeoType = {
+    type      : String,
+    required  : true,
+    enum      : ['Point', 'LineString', 'Polygon'],
+    default   : 'Point'
+};
+
+var Geo = {
+    type        : GeoType,
+    coordinates : [Number]
+};
 
 var userSchema = mongoose.Schema({
-    _id     : Number,
+    _id: Number,
+    wssid: String,
     nick: String,
-    geo: {
-        type: {
-          type: String,
-          required: true,
-          enum: ['Point', 'LineString', 'Polygon'],
-          default: 'Point'
-        },
-        coordinates: [Number]
-    },
+    geo: Geo,
     last_time: { type: Date, default: Date.now }
 });
 
@@ -213,6 +217,7 @@ var SampleApp = function() {
                 var new_id = ++last_id;
                 var user = new User({
                     _id: new_id,
+                    wssid: data.wssid,
                     nick: data.name ? data.name : 'Гость_' + new_id,
                     geo: {
                         coordinates: [data.lat, data.lon]
@@ -296,6 +301,7 @@ var SampleApp = function() {
                     throw "Error";
                 }
                 self.createUser({
+                    wssid: ws.upgradeReq.headers['sec-websocket-key'],
                     name: message.nick,
                     lat: message.lat,
                     lon: message.lon
