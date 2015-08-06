@@ -143,7 +143,7 @@ var SampleApp = function() {
 
             var user = new User({ _id: 0, nick: 'jasper' });
 
-            var users = User.find({}).exec(function(users) {
+            var users = User.find({}).exec(function(errors, users) {
                 res.json(users);
             });           
             
