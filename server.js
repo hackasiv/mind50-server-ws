@@ -179,10 +179,8 @@ var SampleApp = function() {
 
         self.routes['/api/users/:uid/near'] = {method: 'GET', handler: function(req, res) {
 
-
-
-            var users = User.find({}).exec(function(errors, users) {
-                res.json(users);
+            var users = User.findOne({_id: req.params.uid}).exec(function(errors, user) {
+                res.json(user);
             });
             
         }};
