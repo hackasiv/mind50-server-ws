@@ -215,6 +215,14 @@ var SampleApp = function() {
     };
 
 
+    self.handleWS = function(message, ws) {
+
+        setTimeout(function() {
+            ws.send({message: 'Random message', uid: Math.random()});
+        }, 3000);
+
+    };
+
     /**
      *  Initialize the server (express) and create the routes and register
      *  the handlers.
@@ -233,6 +241,7 @@ var SampleApp = function() {
           ws.on('message', function(msg) {
             console.log(msg);
             ws.send('FROM SERVER ==> ' + msg);
+            self.handleWS(msg, ws);
           });
           console.log('socket', req.testing);
         });
