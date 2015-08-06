@@ -143,8 +143,10 @@ var SampleApp = function() {
 
             var user = new User({ _id: 0, nick: 'jasper' });
 
-            res.setHeader('Content-Type', 'application/json');
-            res.json([{nick: 'Jasper', message: "sample text message"}]);
+            var users = User.find({}).exec(function(users) {
+                res.json(users);
+            });           
+            
         } ;
     };
 
