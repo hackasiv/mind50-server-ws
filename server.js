@@ -177,10 +177,15 @@ var SampleApp = function() {
             
         }};
 
-        self.routes['/api/users/:uid/near'] = {method: 'GET', handler: function(req, res) {
-
+        self.routes['/api/users/:uid/near/:distance'] = {method: 'GET', handler: function(req, res) {
+            var distance = 50;
             var users = User.findOne({_id: req.params.uid}).exec(function(errors, user) {
-                res.json(user);
+                if (req.params.distance) {
+                    distance = req.params.distance;
+                }
+                user.findNear(distance, function(errors, users) {
+                    res.json(users);
+                });
             });
             
         }};
