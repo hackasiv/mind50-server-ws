@@ -49,7 +49,7 @@ userSchema.methods.findNear = function (distance, cb) {
         "near": user.geo.coordinates,
         "spherical": true,
         "distanceField": "d",
-        "maxDistance": 0.09692224622030236,
+        "maxDistance": distance / 6371000,
         "query": {}
       }, { dbName: mongodb.dbname }, function (err, doc) {
         console.error('found', doc);
@@ -227,6 +227,13 @@ var SampleApp = function() {
         for (var r in self.routes) {
             self.app[self.routes[r].method.toLowerCase()](r, self.routes[r].handler);
         }
+
+        app.ws('/ws', function(ws, req) {
+          ws.on('message', function(msg) {
+            console.log(msg);
+          });
+          console.log('socket', req.testing);
+        });
     };
 
 
