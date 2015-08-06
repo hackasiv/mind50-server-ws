@@ -313,13 +313,14 @@ var SampleApp = function() {
                 getUser(function(errors, user) {
                     self.createMessage(user._id, {message: message.message}, function(errors, message){
                         self.getNearestUsers(user._id, function(errors, users) {
-                            users.forEach(function(user){
+                            for(var i in users) {
+                                var user = users[i];
                                 wss.clients.forEach(function(client) {
                                     if (client.upgradeReq.headers['sec-websocket-key'] == user.wssid) {
                                         client.send(JSON.stringify(message));
                                     }
                                 });
-                            });                        
+                            }                     
                         });
                     });
                 });
