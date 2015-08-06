@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "express": "~3.4.4",
+    "express-ws": "^0.2.6",
     "mongodb": "^2.0.39",
     "mongoose": "^4.1.1"
   },

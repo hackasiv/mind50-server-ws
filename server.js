@@ -44,14 +44,13 @@ userSchema.methods.findNear = function (distance, cb) {
     // executing the command
     model.db.db.command({
         "geoNear": model.collection.name,
-        "uniqueDocs":true,
-        "includeLocs":true,
+        "uniqueDocs": true,
+        "includeLocs": true,
         "near": user.geo.coordinates,
-        "spherical":false,
-        "distanceField":"d",
-        "maxDistance":0.09692224622030236,
-        "query":{},
-        "num":3
+        "spherical": true,
+        "distanceField": "d",
+        "maxDistance": 0.09692224622030236,
+        "query": {}
       }, { dbName: mongodb.dbname }, function (err, doc) {
         console.error('found', doc);
         cb(err, doc);
