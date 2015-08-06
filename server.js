@@ -228,7 +228,7 @@ var SampleApp = function() {
             self.app[self.routes[r].method.toLowerCase()](r, self.routes[r].handler);
         }
 
-        app.ws('/ws', function(ws, req) {
+        self.app.ws('/ws', function(ws, req) {
           ws.on('message', function(msg) {
             console.log(msg);
           });
