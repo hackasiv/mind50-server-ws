@@ -55,8 +55,8 @@ userSchema.methods.findNear = function (distance, cb) {
       }, { dbName: mongodb.dbname }, function (err, doc) {
         console.error('found', doc);
         cb(err, doc);
-      });
-    });
+      }
+    );
 
 
     //return .geoNear(this.geo, {maxDistance: distance, spherical: true});
@@ -207,7 +207,7 @@ var SampleApp = function() {
                 console.log(user.findNear(distance), 'user');
                 console.log(user.findNear(distance).then, 'user');
 
-                user.findNear(distance).then(function(errors, users) {
+                user.findNear(distance, function(errors, users) {
                     console.log(errors, 'errors');
                     res.json({errors: errors, users: users});
                 });
