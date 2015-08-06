@@ -10,6 +10,14 @@ var mongodb = {
     dbname: 'mind50'
 }
 
+if (!process.env.OPENSHIFT_MONGODB_DB_HOST) {
+    process.env.OPENSHIFT_MONGODB_DB_HOST =  '127.7.155.2';
+}
+
+if (!process.env.OPENSHIFT_MONGODB_DB_PORT) {
+    process.env.OPENSHIFT_MONGODB_DB_PORT =  27017;
+}
+
 mongoose.connect("mongodb://" + mongodb.user + ":" + mongodb.password + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname);
 
 
@@ -166,61 +174,159 @@ var SampleApp = function() {
         }};
 
         self.routes['/api/uid/:lat/:lon/:nick'] = {method: 'POST', handler: function(req, res) {
-            var last_id = 0;
-            User.find({})
-                .limit(1)
-                .sort({ _id: -1 })
-                .select({ _id: 1 })
-                .exec(function(errors, users) {
-                    if (users && users.length) {
-                        var last_id = users[0]._id;
-                    }
-                    var new_id = ++last_id;
-                    var user = new User({
-                        _id: new_id,
-                        nick: req.params.name ? req.params.name : 'Гость_' + new_id,
-                        geo: {
-                            coordinates: [req.params.lat, req.params.lon]
-                        }
-                    });
-                    user.save(function(errors) {
-                        res.json({errors: errors, user: user});
-                    });
-                });
+            self.createUser(req.params, function(errors, user) {
+                res.json({errors: errors, user: user});
+            });
         }};
 
         self.routes['/api/users'] = {method: 'GET', handler: function(req, res) {
-
             var users = User.find({}).exec(function(errors, users) {
                 res.json(users);
             });
-            
         }};
 
         self.routes['/api/users/:uid/near/:distance'] = {method: 'GET', handler: function(req, res) {
-            var distance = 50;
-            var users = User.findOne({_id: req.params.uid}).exec(function(errors, user) {
-                if (req.params.distance) {
-                    distance = req.params.distance;
-                }
-
-                user.findNear(distance, function(errors, users) {
-                    console.log(errors, 'errors');
-                    res.json({errors: errors, users: users});
-                });
-            });
-            
+            self.getNearestUsers(req.params.uid, req.params.distance, function(errors, users) {
+                console.log(errors, 'errors');
+                res.json({errors: errors, users: users});
+            });            
         }};
 
     };
 
+    /**
+     * [createUser description]
+     * @param  {[type]}   data {name: 'Jasper', lat: 43.0001, lon: 123.0234453}
+     * @param  {Function} cb   [description]
+     * @return {[type]}        [description]
+     */
+    self.createUser = function(data, cb) {
+        var last_id = 0;
+        User.find({})
+            .limit(1)
+            .sort({ _id: -1 })
+            .select({ _id: 1 })
+            .exec(function(errors, users) {
+                if (users && users.length) {
+                    var last_id = users[0]._id;
+                }
+                var new_id = ++last_id;
+                var user = new User({
+                    _id: new_id,
+                    nick: data.name ? data.name : 'Гость_' + new_id,
+                    geo: {
+                        coordinates: [data.lat, data.lon]
+                    }
+                });
+                user.save(function(errors) {
+                    cb(errors, user);
+                });
+            }); 
+    };
+
+    /**
+     * [createMessage description]
+     * @param  Number   uid  [description]
+     * @param  Object   data {message: "Temp message"}
+     * @param  {Function} cb   [description]
+     * @return {[type]}        [description]
+     */
+    self.createMessage = function(uid, data, cb) {
+        self.getUser(uid, function(errors, user) {
+            var message = new Message({
+                _user: user._id,
+                message: data.message
+            });
+            message.save(function(errors){
+                cb(errors, message);
+            });
+        })
+    };
+
+    /**
+     * [findUserByWSSID description]
+     * @param  {[type]}   wssid [description]
+     * @param  {Function} cb    [description]
+     * @return {[type]}         [description]
+     */
+    self.findUserByWSSID = function(wssid, cb) {
+        User.findOne({wssid: wssid}).exec(function(errors, user) {
+            cb(errors, user);
+        });
+    };
+
+    /**
+     * [getNearestUsers description]
+     * @param  {[type]}   uid      [description]
+     * @param  {[type]}   distance [description]
+     * @param  {Function} cb       [description]
+     * @return {[type]}            [description]
+     */
+    self.getNearestUsers = function(uid, distance, cb) {
+        self.getUser(uid, function(errors, user) {
+            if (!distance) {
+                distance = 50;
+            }
+
+            user.findNear(distance, function(errors, users) {
+                console.log(errors, 'errors');
+                cb(errors, users);
+            });
+        });
+    };
+
+    self.getUser = function(uid, cb) {
+        User.findOne({_id: uid}).exec(function(errors, user) {
+            cb(errors, user);
+        });
+    }
 
     self.handleWS = function(message, ws) {
 
-        setInterval(function() {
-            ws.send(JSON.stringify({message: 'Random message', uid: Math.random()}));
-        }, 3000);
+        var getUser = function(cb) {
+            User.findOne({wssid: ws.upgradeReq.headers['sec-websocket-key']}, function(errors, user){
+                cb(errors, user);
+            });
+        };
 
+        try {
+            var message = JSON.parse(message);   
+            if (message.action == 'signin') {
+                if ('undefined' == typeof message.lat || 'undefined' == typeof message.lon) {
+                    throw "Error";
+                }
+                self.createUser({
+                    name: message.nick,
+                    lat: message.lat,
+                    lon: message.lon
+                }, function(errors, user) {
+                    console.log(user);
+                    ws.send(JSON.stringify({errors: errors, user: user}));
+                });                  
+            } else if (message.action == 'post') { // Request to post message(Mind)
+                getUser(function(errors, user) {
+                    self.createMessage(user._id, {message: message.message}, function(errors, message){
+                        self.getNearestUsers(user._id, function(errors, users) {
+                            users.forEach(function(user){
+                                wss.clients.forEach(function(client) {
+                                    if (client.upgradeReq.headers['sec-websocket-key'] == user.wssid) {
+                                        client.send(JSON.stringify(message));
+                                    }
+                                });
+                            });                        
+                        });
+                    });
+                });
+
+            } else if (message.action == 'update_geo') { // Request to update position
+
+            }
+            // setInterval(function() {
+            //     ws.send(JSON.stringify({message: 'Random message', uid: Math.random()}));
+            // }, 3000);
+        } catch(ex) {
+            console.log(500, ex);
+        }
     };
 
     /**
@@ -229,7 +335,7 @@ var SampleApp = function() {
      */
     self.initializeServer = function() {
         self.createRoutes();
-        self.app = express.createServer();
+        self.app = express();
         var expressWs = require('express-ws')(self.app);
 
         //  Add handlers for the app (from the routes).
@@ -238,13 +344,17 @@ var SampleApp = function() {
         }
 
         self.app.ws('/ws', function(ws, req) {
+          var wss = expressWs.getWss('/ws');
+                    
           ws.on('message', function(msg) {
-            console.log(msg);
-            ws.send('FROM SERVER ==> ' + msg);
-            self.handleWS(msg, ws);
+            // console.log(msg);
+            self.handleWS(msg, ws, wss);
           });
-          console.log('socket', req.testing);
+
+          // console.log('socket', req.testing);
         });
+
+
     };
 
 
