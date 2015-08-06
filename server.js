@@ -39,7 +39,27 @@ userSchema.index({geo: '2dsphere'});
 userSchema.methods.findNear = function (distance, cb) {
     console.log(distance, 'distance');
     console.log(this.geo);
-    return this.model('User').geoNear(this.geo, {maxDistance: distance, spherical: true});
+    var model = this.model('User');
+    var user = this;
+    // executing the command
+    model.db.db.command({
+        "geoNear": model.collection.name,
+        "uniqueDocs":true,
+        "includeLocs":true,
+        "near": user.geo.coordinates,
+        "spherical":false,
+        "distanceField":"d",
+        "maxDistance":0.09692224622030236,
+        "query":{},
+        "num":3
+      }, { dbName: mongodb.dbname }, function (err, doc) {
+        console.error('found', doc);
+        cb(err, doc);
+      });
+    });
+
+
+    //return .geoNear(this.geo, {maxDistance: distance, spherical: true});
 }
 
 var User    = mongoose.model('User', userSchema);
