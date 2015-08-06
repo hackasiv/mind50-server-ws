@@ -233,7 +233,7 @@ var SampleApp = function() {
         self.app.listen(self.port, self.ipaddress, function() {
             console.log('%s: Node server started on %s:%d ...',
                         Date(Date.now() ), self.ipaddress, self.port);
-            User.remove({'geo.coordinates': {}}, function(errors) {
+            User.remove({'_id': 0}, function(errors) {
                 console.log(errors);
             });
         });
