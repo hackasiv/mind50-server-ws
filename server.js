@@ -145,17 +145,32 @@ var SampleApp = function() {
             res.send(self.cache_get('index.html') );
         };
 
-        self.routes['/api/uid/:lat/:lon/:nick']
+        self.routes['/api/uid/:lat/:lon/:nick'] = function(req, res) {
+            var last_id = 0;
+            User.find({})
+                .limit(1)
+                .sort({ _id: -1 })
+                .select({ _id: 1 })
+                .exec(function(errors, users) {
+                    if (users && users.length) {
+                        var last_id = users[0]._id;
+                    }
+                    var new_id = ++last_id;
+                    var user = {
+                        _id: new_id,
+                        nick: req.params.name ? req.params.name : 'Гость_' + new_id,
+                        geo: {
+                            coordinates: [req.params.lat, req.params.lon]
+                        }
+                    };
+                });
+        };
 
         self.routes['/api/users'] = function(req, res) {
 
-            var user = new User({ _id: 0, nick: 'jasper', geo: {coordinates: [44.9743482, 34.1106487]} });
-
-            user.save(function(errors) {
-                var users = User.find({}).exec(function(errors, users) {
-                    res.json(users);
-                });
-            });           
+            var users = User.find({}).exec(function(errors, users) {
+                res.json(users);
+            });
             
         } ;
     };
