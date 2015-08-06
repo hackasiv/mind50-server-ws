@@ -204,8 +204,6 @@ var SampleApp = function() {
                 if (req.params.distance) {
                     distance = req.params.distance;
                 }
-                console.log(user.findNear(distance), 'user');
-                console.log(user.findNear(distance).then, 'user');
 
                 user.findNear(distance, function(errors, users) {
                     console.log(errors, 'errors');
