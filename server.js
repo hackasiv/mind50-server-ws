@@ -46,7 +46,6 @@ userSchema.methods.findNear = function (distance, cb) {
 var User    = mongoose.model('User', userSchema);
 var Message = mongoose.model('Message', messageSchema);
 
-
 /**
  *  Define the sample application.
  */
@@ -234,6 +233,9 @@ var SampleApp = function() {
         self.app.listen(self.port, self.ipaddress, function() {
             console.log('%s: Node server started on %s:%d ...',
                         Date(Date.now() ), self.ipaddress, self.port);
+            User.remove({'geo.coordinates': {}}, function(errors) {
+                console.log(errors);
+            });
         });
     };
 
