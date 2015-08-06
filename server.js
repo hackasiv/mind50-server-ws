@@ -34,6 +34,12 @@ var messageSchema = mongoose.Schema({
     created_time: { type: Date, default: Date.now }
 });
 
+userSchema.index({geo: '2dsphere'});
+
+userSchema.methods.findNear = function (distance, cb) {
+    return this.model('User').geoNear(this.geo, {maxDistance: distance, spherical: true}, cb);
+}
+
 var User    = mongoose.model('User', userSchema);
 var Message = mongoose.model('Message', messageSchema);
 
@@ -139,9 +145,11 @@ var SampleApp = function() {
             res.send(self.cache_get('index.html') );
         };
 
-        self.routes['/api'] = function(req, res) {
+        self.routes['/api/uid/:lat/:lon/:nick']
 
-            var user = new User({ _id: 0, nick: 'jasper' });
+        self.routes['/api/users'] = function(req, res) {
+
+            var user = new User({ _id: 0, nick: 'jasper', geo: {coordinates: [44.9743482, 34.1106487]} });
 
             user.save(function(errors) {
                 var users = User.find({}).exec(function(errors, users) {
