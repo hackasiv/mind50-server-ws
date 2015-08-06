@@ -12,6 +12,32 @@ var mongodb = {
 
 mongoose.connect("mongodb://" + mongodb.user + ":" + mongodb.password + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname);
 
+
+var userSchema = mongoose.Schema({
+    _id     : Number,
+    nick: String,
+    geo: {
+        type: {
+          type: String,
+          required: true,
+          enum: ['Point', 'LineString', 'Polygon'],
+          default: 'Point'
+        },
+        coordinates: [Number]
+    },
+    last_time: { type: Date, default: Date.now }
+});
+
+var messageSchema = mongoose.Schema({
+    _user : { type: Number, ref: 'User' },
+    message: String,
+    created_time: { type: Date, default: Date.now }
+});
+
+var User    = mongoose.model('User', userSchema);
+var Message = mongoose.model('Message', messageSchema);
+
+
 /**
  *  Define the sample application.
  */
@@ -114,6 +140,9 @@ var SampleApp = function() {
         };
 
         self.routes['/api'] = function(req, res) {
+
+            var user = new User({ _id: 0, nick: 'jasper' });
+
             res.setHeader('Content-Type', 'application/json');
             res.json([{nick: 'Jasper', message: "sample text message"}]);
         } ;
