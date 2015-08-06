@@ -2,7 +2,15 @@
 //  OpenShift sample Node application
 var express = require('express');
 var fs      = require('fs');
+var mongoose = require('mongoose');
 
+var mongodb = {
+    user: 'admin',
+    password: 'x63b1JH8tTpt',
+    dbname: 'mind50'
+}
+
+mongoose.connect("mongodb://" + mongodb.user + ":" + mongodb.password + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname);
 
 /**
  *  Define the sample application.
