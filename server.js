@@ -135,17 +135,17 @@ var SampleApp = function() {
     self.createRoutes = function() {
         self.routes = { };
 
-        self.routes['/asciimo'] = function(req, res) {
+        self.routes['/asciimo'] = {method: 'GET', handler: function(req, res) {
             var link = "http://i.imgur.com/kmbjB.png";
             res.send("<html><body><img src='" + link + "'></body></html>");
-        };
+        }};
 
-        self.routes['/'] = function(req, res) {
+        self.routes['/'] = {method:'GET', handler: function(req, res) {
             res.setHeader('Content-Type', 'text/html');
             res.send(self.cache_get('index.html') );
-        };
+        }};
 
-        self.routes['/api/uid/:lat/:lon/:nick'] = function(req, res) {
+        self.routes['/api/uid/:lat/:lon/:nick'] = {method: 'POST', handler: function(req, res) {
             var last_id = 0;
             User.find({})
                 .limit(1)
@@ -156,23 +156,37 @@ var SampleApp = function() {
                         var last_id = users[0]._id;
                     }
                     var new_id = ++last_id;
-                    var user = {
+                    var user = new User({
                         _id: new_id,
                         nick: req.params.name ? req.params.name : 'Гость_' + new_id,
                         geo: {
                             coordinates: [req.params.lat, req.params.lon]
                         }
-                    };
+                    });
+                    user.save(function(errors) {
+                        res.json({errors: errors, user: user});
+                    });
                 });
-        };
+        }};
 
-        self.routes['/api/users'] = function(req, res) {
+        self.routes['/api/users'] = {method: 'GET', handler: function(req, res) {
 
             var users = User.find({}).exec(function(errors, users) {
                 res.json(users);
             });
             
-        } ;
+        }};
+
+        self.routes['/api/users/:uid/near'] = {method: 'GET', handler: function(req, res) {
+
+
+
+            var users = User.find({}).exec(function(errors, users) {
+                res.json(users);
+            });
+            
+        }};
+
     };
 
 
@@ -186,7 +200,7 @@ var SampleApp = function() {
 
         //  Add handlers for the app (from the routes).
         for (var r in self.routes) {
-            self.app.get(r, self.routes[r]);
+            self.app[self.routes[r].method.toLowerCase()](r, self.routes[r].handler);
         }
     };
 
