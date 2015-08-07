@@ -1,90 +1,24 @@
 #!/bin/env node
-//  OpenShift sample Node application
-var express = require('express');
-var fs      = require('fs');
-var mongoose = require('mongoose');
+/**
+ * @author Jasper Grimm
+ * @package com.crimeadev.mind50server 
+ * 
+ */
 
-var mongodb = {
-    user: 'admin',
-    password: 'x63b1JH8tTpt',
-    dbname: 'mind50'
-}
+var express = require("express");
+var fs      = require("fs");
+var schemas = require("./schemas");
 
-if (!process.env.OPENSHIFT_MONGODB_DB_HOST) {
-    process.env.OPENSHIFT_MONGODB_DB_HOST =  '127.7.155.2';
-}
+var userSchema = schemas.userSchema;
+var User = schemas.User;
+var Message = schemas.Message;
 
-if (!process.env.OPENSHIFT_MONGODB_DB_PORT) {
-    process.env.OPENSHIFT_MONGODB_DB_PORT =  27017;
-}
-
-var connection_string = "mongodb://" + mongodb.user + ":" + mongodb.password + "@" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname;
-
-if (process.env.OPENSHIFT_MONGODB_DB_HOST == '127.0.0.1') {
-    connection_string = "mongodb://" + process.env.OPENSHIFT_MONGODB_DB_HOST + ":" + process.env.OPENSHIFT_MONGODB_DB_PORT + "/" + mongodb.dbname
-}
-
-mongoose.connect(connection_string);
-
-var GeoType = {
-    type      : String,
-    required  : true,
-    enum      : ['Point', 'LineString', 'Polygon'],
-    default   : 'Point'
-};
-
-var Geo = {
-    type        : GeoType,
-    coordinates : [Number]
-};
-
-var userSchema = mongoose.Schema({
-    _id: Number,
-    wssid: String,
-    nick: String,
-    geo: Geo,
-    last_time: { type: Date, default: Date.now }
-});
-
-var messageSchema = mongoose.Schema({
-    _user : { type: Number, ref: 'User' },
-    message: String,
-    created_time: { type: Date, default: Date.now }
-});
-
-userSchema.index({geo: '2dsphere'});
-
-userSchema.methods.findNear = function (distance, cb) {
-    console.log(distance, 'distance');
-    console.log(this.geo);
-    var model = this.model('User');
-    var user = this;
-    // executing the command
-    model.db.db.command({
-        "geoNear": model.collection.name,
-        "uniqueDocs": true,
-        "includeLocs": true,
-        "near": user.geo.coordinates,
-        "spherical": true,
-        "distanceField": "d",
-        "maxDistance": distance / 6371000,
-        "query": {}
-      }, { dbName: mongodb.dbname }, function (err, doc) {
-        cb(err, doc);
-      }
-    );
-
-
-    //return .geoNear(this.geo, {maxDistance: distance, spherical: true});
-}
-
-var User    = mongoose.model('User', userSchema);
-var Message = mongoose.model('Message', messageSchema);
+var DISTANCE = 1000; // Distance in meters
 
 /**
- *  Define the sample application.
+ *  Define the Mind50 application.
  */
-var SampleApp = function() {
+var Mind50App = function() {
 
     //  Scope.
     var self = this;
@@ -172,35 +106,10 @@ var SampleApp = function() {
     self.createRoutes = function() {
         self.routes = { };
 
-        self.routes['/asciimo'] = {method: 'GET', handler: function(req, res) {
-            var link = "http://i.imgur.com/kmbjB.png";
-            res.send("<html><body><img src='" + link + "'></body></html>");
-        }};
-
         self.routes['/'] = {method:'GET', handler: function(req, res) {
             res.setHeader('Content-Type', 'text/html');
             res.send(self.cache_get('index.html') );
         }};
-
-        self.routes['/api/uid/:lat/:lon/:nick'] = {method: 'POST', handler: function(req, res) {
-            self.createUser(req.params, function(errors, user) {
-                res.json({errors: errors, user: user});
-            });
-        }};
-
-        self.routes['/api/users'] = {method: 'GET', handler: function(req, res) {
-            var users = User.find({}).exec(function(errors, users) {
-                res.json(users);
-            });
-        }};
-
-        self.routes['/api/users/:uid/near/:distance'] = {method: 'GET', handler: function(req, res) {
-            self.getNearestUsers(req.params.uid, req.params.distance, function(errors, users) {
-                console.log(errors, 'errors');
-                res.json({errors: errors, users: users});
-            });            
-        }};
-
     };
 
     /**
@@ -275,7 +184,7 @@ var SampleApp = function() {
     self.getNearestUsers = function(uid, distance, cb) {
         self.getUser(uid, function(errors, user) {
             if (!distance) {
-                distance = 50;
+                distance = DISTANCE;
             }
 
             user.findNear(distance, function(errors, results) {
@@ -324,12 +233,14 @@ var SampleApp = function() {
                     lat: message.lat,
                     lon: message.lon
                 }, function(errors, user) {
-                    self.getNearestUsersCount(user._id, 1000, function(errors, count) {
+                    self.getNearestUsersCount(user._id, DISTANCE, function(errors, count) {
                         ws.send(JSON.stringify({errors: errors, data: user, action: 'signin', nearest_users: count}));
                     });
                 });                  
             } else if (message.action == 'post') { // Request to post message(Mind)
                 getUser(function(errors, user) {
+                    user.last_time = new Date(); // Update user last_time connection
+                    user.save(function(errors){});
                     self.createMessage(user._id, {message: message.message}, function(errors, message){
                         var msg = {
                             message: message.message,
@@ -339,7 +250,7 @@ var SampleApp = function() {
                             },
                             created_time: message.created_time.getTime()
                         };
-                        self.getNearestUsers(user._id, 1000, function(errors, users) {
+                        self.getNearestUsers(user._id, DISTANCE, function(errors, users) {
                             for(var i in users) {
                                 var user = users[i].obj;
                                 console.log(msg, 'msg');
@@ -358,7 +269,14 @@ var SampleApp = function() {
                 });
 
             } else if (message.action == 'update_geo') { // Request to update position
-
+                var geo = message.data.geo;
+                getUser(function(errors, user) {
+                    user.last_time = new Date();
+                    user.geo.coordinates = [geo.lat, geo.lon];
+                    user.save(function(errors) {
+                        ws.send(JSON.stringify({errors: errors, data: user, action: message.action}));
+                    });
+                });
             }
             // setInterval(function() {
             //     ws.send(JSON.stringify({message: 'Random message', uid: Math.random()}));
@@ -424,14 +342,13 @@ var SampleApp = function() {
         });
     };
 
-};   /*  Sample Application.  */
-
+};
 
 
 /**
  *  main():  Main code.
  */
-var zapp = new SampleApp();
+var zapp = new Mind50App();
 zapp.initialize();
 zapp.start();
 
