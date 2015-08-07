@@ -259,7 +259,8 @@ var Mind50App = function() {
                                         client.send(JSON.stringify({
                                             errors: errors, 
                                             data: msg,
-                                            action: 'post'
+                                            action: 'post',
+                                            nearest_users: users.length
                                         }));
                                     }
                                 });
@@ -274,7 +275,9 @@ var Mind50App = function() {
                     user.last_time = new Date();
                     user.geo.coordinates = [geo.lat, geo.lon];
                     user.save(function(errors) {
-                        ws.send(JSON.stringify({errors: errors, data: user, action: message.action}));
+                        self.getNearestUsersCount(user._id, DISTANCE, function(errors, count) {
+                            ws.send(JSON.stringify({errors: errors, data: user, action: message.action, nearest_users: count}));
+                        });
                     });
                 });
             }
