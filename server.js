@@ -285,6 +285,19 @@ var SampleApp = function() {
         });
     };
 
+    /**
+     * [getNearestUsersCount description]
+     * @param  {[type]}   uid      [description]
+     * @param  {[type]}   distance [description]
+     * @param  {Function} cb       [description]
+     * @return {[type]}            [description]
+     */
+    self.getNearestUsersCount = function(uid, distance, cb) {
+        self.getNearestUsers(uid, distance, function(errors, users){
+            cb(errors, users.length);
+        });
+    };
+
     self.getUser = function(uid, cb) {
         User.findOne({_id: uid}).exec(function(errors, user) {
             cb(errors, user);
@@ -311,8 +324,9 @@ var SampleApp = function() {
                     lat: message.lat,
                     lon: message.lon
                 }, function(errors, user) {
-                    console.log(user);
-                    ws.send(JSON.stringify({errors: errors, data: user, action: 'signin'}));
+                    self.getNearestUsersCount(user._id, 1000, function(errors, count) {
+                        ws.send(JSON.stringify({errors: errors, data: user, action: 'signin', nearest_users: count}));
+                    });
                 });                  
             } else if (message.action == 'post') { // Request to post message(Mind)
                 getUser(function(errors, user) {
