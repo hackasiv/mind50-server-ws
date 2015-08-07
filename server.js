@@ -312,18 +312,30 @@ var SampleApp = function() {
                     lon: message.lon
                 }, function(errors, user) {
                     console.log(user);
-                    ws.send(JSON.stringify({errors: errors, user: user}));
+                    ws.send(JSON.stringify({errors: errors, data: user, action: 'signin'}));
                 });                  
             } else if (message.action == 'post') { // Request to post message(Mind)
                 getUser(function(errors, user) {
                     self.createMessage(user._id, {message: message.message}, function(errors, message){
-                        self.getNearestUsers(user._id, 100, function(errors, users) {
+                        var msg = {
+                            message: message.message,
+                            user: {
+                                _id: user._id,
+                                _nick: user.nick
+                            },
+                            created_time: message.created_time.getTime()
+                        };
+                        self.getNearestUsers(user._id, 1000, function(errors, users) {
                             for(var i in users) {
                                 var user = users[i].obj;
-                                console.log(user, 'user');
+                                console.log(msg, 'msg');
                                 wss.clients.forEach(function(client) {
                                     if (client.upgradeReq.headers['sec-websocket-key'] == user.wssid) {
-                                        client.send(JSON.stringify(message));
+                                        client.send(JSON.stringify({
+                                            errors: errors, 
+                                            data: msg,
+                                            action: 'post'
+                                        }));
                                     }
                                 });
                             }                     

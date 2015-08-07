@@ -11,10 +11,16 @@ User ID is bound to openned connection. So, UID in each request is not needed mo
 ### SignIn
 ```javascript
 message body: {"action": "signin", "lat": 41.000, "lon": 32.0002, nick: "Jasper"}
-/* Request sample */
+/* Response sample */
 {"errors":null,"user":{"__v":0,"_id":8,"wssid":"MTMtMTQzODg4MDQ4MDI2MQ==","nick":"Гость_8","last_time":"2015-08-06T17:01:28.017Z","geo":{"coordinates":[41,32.0002],"type":"Point"}}}
 ```
 ### Post message
 ```javascript
 message body: {"action": "post", "message": "Some text"}
+```
+
+### Message Queue Subscription
+```javascript
+/* Response sample */
+{"errors":null,"data":{"message":"Some text","user":{"_id":21,"_nick":"Гость_21"},"created_time":"2015-08-07T08:19:06.648Z"},"action":"post"}
 ```
